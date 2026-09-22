@@ -7,18 +7,22 @@
  * Source Sans is loaded by next/font in the app and cannot be reached from
  * here — an external font would be a second request, which the host's
  * default-deny CSP refuses — so the view falls back to the same system stack
- * globals.css names after it.
+ * globals.css names after it, unless the host hands over its own.
+ *
+ * The neutral roles read the host's style variables first (view.ts applies
+ * them to <html>), so the panel sits in the host's palette; the house colors
+ * are only the fallback. Signal and the graphite button stay the brand's own.
  */
 :root {
-  --surface: #ffffff;
-  --raised: #f2f2f2;
-  --rule: #e8e9eb;
-  --edge: #c7c7c7;
-  --ink: #323232;
-  --ink-soft: #5a5a5a;
-  --ink-mute: #767676;
+  --surface: var(--color-background-primary, #ffffff);
+  --raised: var(--color-background-secondary, #f2f2f2);
+  --rule: var(--color-border-tertiary, #e8e9eb);
+  --edge: var(--color-border-primary, #c7c7c7);
+  --ink: var(--color-text-primary, #323232);
+  --ink-soft: var(--color-text-secondary, #5a5a5a);
+  --ink-mute: var(--color-text-tertiary, #767676);
   --signal: #0056a4;
-  --danger: #a11212;
+  --danger: var(--color-text-danger, #a11212);
   /* Buttons are graphite, not blue — the brand keeps blue for links. */
   --button: #464646;
   --button-hover: #323232;
@@ -27,36 +31,36 @@
 }
 
 /*
- * Two dark selectors on purpose. The media query is the default, and step 24
- * lets the MCP host set `data-theme` on <html> from its own host context —
- * which has to win over the OS in both directions, hence the `:not()` guard.
+ * Two dark selectors on purpose. The media query is the default, and view.ts
+ * sets `data-theme` on <html> from the host context — which has to win over
+ * the OS in both directions, hence the `:not()` guard.
  */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --surface: #323232;
-    --raised: #464646;
-    --rule: #464646;
-    --edge: #5a5a5a;
-    --ink: #e0e0e0;
-    --ink-soft: #c7c7c7;
-    --ink-mute: #aeaeae;
+    --surface: var(--color-background-primary, #323232);
+    --raised: var(--color-background-secondary, #464646);
+    --rule: var(--color-border-tertiary, #464646);
+    --edge: var(--color-border-primary, #5a5a5a);
+    --ink: var(--color-text-primary, #e0e0e0);
+    --ink-soft: var(--color-text-secondary, #c7c7c7);
+    --ink-mute: var(--color-text-tertiary, #aeaeae);
     --signal: #63a8e8;
-    --danger: #ef9a9a;
+    --danger: var(--color-text-danger, #ef9a9a);
     --button: #5a5a5a;
     --button-hover: #6e6e6e;
   }
 }
 
 :root[data-theme="dark"] {
-  --surface: #323232;
-  --raised: #464646;
-  --rule: #464646;
-  --edge: #5a5a5a;
-  --ink: #e0e0e0;
-  --ink-soft: #c7c7c7;
-  --ink-mute: #aeaeae;
+  --surface: var(--color-background-primary, #323232);
+  --raised: var(--color-background-secondary, #464646);
+  --rule: var(--color-border-tertiary, #464646);
+  --edge: var(--color-border-primary, #5a5a5a);
+  --ink: var(--color-text-primary, #e0e0e0);
+  --ink-soft: var(--color-text-secondary, #c7c7c7);
+  --ink-mute: var(--color-text-tertiary, #aeaeae);
   --signal: #63a8e8;
-  --danger: #ef9a9a;
+  --danger: var(--color-text-danger, #ef9a9a);
   --button: #5a5a5a;
   --button-hover: #6e6e6e;
 }
@@ -67,7 +71,7 @@ body {
   padding: 8px;
   background: transparent;
   color: var(--ink);
-  font-family: system-ui, sans-serif;
+  font-family: var(--font-sans, system-ui, sans-serif);
   font-size: 16px;
   line-height: 24px;
 }
@@ -141,6 +145,17 @@ button:disabled {
   background: var(--raised);
   color: var(--ink-mute);
   cursor: default;
+}
+
+/* A rejected title: the message under the field says why, the edge only marks where. */
+input[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+.field-error {
+  margin: 0;
+  font-size: 14px;
+  color: var(--danger);
 }
 
 .status {

@@ -96,7 +96,7 @@ To take it out again: `claude mcp remove ai-tutor` (add `-s user` or `-s project
 
 ## Remote option: `/api/mcp` over HTTP
 
-The web app serves the same tools over Streamable HTTP at `/api/mcp`, working on the database directly. It accepts only OAuth access tokens that the app itself issued for that URL, and the list a token reaches is the list of the user who approved it.
+The web app serves the same tools over Streamable HTTP at `/api/mcp`, working on the database directly, plus an MCP App: `open_todo_form` (`{ "title"?: string }`) shows a to-do form inside the chat of a host that renders MCP Apps, prefilled with the title the model drafted and listing the open to-dos. The model only drafts; the item is added when the user presses Add, which calls `submit_todo_form` (`{ "title": string }`). That tool is marked app-only (`_meta.ui.visibility: ["app"]`), so a host that renders MCP Apps does not offer it to the model. After a save the form tells the model what was added. The server accepts only OAuth access tokens that the app itself issued for that URL, and the list a token reaches is the list of the user who approved it.
 
 Claude Code needs no client ID or secret. It identifies itself with a Client ID Metadata Document, `https://claude.ai/oauth/claude-code-client-metadata`, which the app fetches when you log in. So the app needs outbound HTTPS to `claude.ai`.
 
@@ -150,7 +150,7 @@ In non-interactive runs (`claude -p`), Claude Code cannot open a browser. Log in
 
 ### Check that it's connected
 
-After logging in, `claude mcp get ai-tutor-http` shows `✔ Connected`, and `/mcp` lists the three tools. Ask Claude something like "what's on my ai-tutor list?" to check it end to end. It shows the list of the account you allowed on the consent page.
+After logging in, `claude mcp get ai-tutor-http` shows `✔ Connected`, and `/mcp` lists the tools: the three above and `open_todo_form`, plus `submit_todo_form` if the host shows app-only tools. Ask Claude something like "what's on my ai-tutor list?" to check it end to end. It shows the list of the account you allowed on the consent page.
 
 If the login does not start, check the two things Claude Code reads before it opens the browser:
 

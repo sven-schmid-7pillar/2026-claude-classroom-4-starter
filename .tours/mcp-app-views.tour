@@ -1,7 +1,7 @@
 {
   "$schema": "https://aka.ms/codetour-schema",
   "title": "MCP App views: one HTML file per view",
-  "description": "How a view for an MCP App is built here: a Vite pipeline that folds a folder of HTML, CSS and TypeScript into one self-contained file, and the plain to-do form that goes through it. About 10 minutes including the build. Run all commands from the repository root.",
+  "description": "How a view for an MCP App is built and served here: a Vite pipeline that folds a folder of HTML, CSS and TypeScript into one self-contained file, the to-do form that goes through it, and the tools and `ui://` resource that hand it to a host and save what the user adds. About 12 minutes including the build. Run all commands from the repository root.",
   "steps": [
     {
       "title": "Demo: one file, and no second request",
@@ -27,27 +27,33 @@
     },
     {
       "file": "mcp-apps/todo-form/index.html",
-      "line": 30,
+      "line": 36,
       "title": "The entry: index.html",
-      "description": "This is what Vite follows. A `.ts` file straight in a `<script type=\"module\">` — Vite transpiles the entry it finds in the HTML, so a view is TypeScript with no separate compile step.\n\n**Show:** this line and the `./style.css` link at the top of the file. Two ordinary relative paths that a browser would fetch, and after the build neither of them exists.\n\nThe markup is a form and nothing else: a labelled input, an `Add` button, an `aria-live` status line, and an empty list under \"Open to-dos\". The ids are the only contract between this file and the next two."
+      "description": "This is what Vite follows. A `.ts` file straight in a `<script type=\"module\">` — Vite transpiles the entry it finds in the HTML, so a view is TypeScript with no separate compile step.\n\n**Show:** this line and the `./style.css` link at the top of the file. Two ordinary relative paths that a browser would fetch, and after the build neither of them exists.\n\nThe markup is a form and nothing else: a labelled input with its error line underneath, an `Add` button, an `aria-live` status line, and an empty list under \"Open to-dos\". The ids are the only contract between this file and the next two."
     },
     {
       "file": "mcp-apps/todo-form/style.css",
-      "line": 12,
+      "line": 16,
       "title": "Tokens, copied rather than imported",
-      "description": "These are the semantic role tokens from `app/globals.css`, copied by hand.\n\n**Distinction:** the app's pages and this view share a design system but not a document. The iframe inherits nothing — not Tailwind, not `globals.css`, not even the Source Sans that `next/font` loads, since an external font is another request the CSP refuses. Copying is what the sandbox costs, and the two blocks now have to be kept in step deliberately.\n\nBelow this, dark is defined twice: once under `prefers-color-scheme`, once under a `data-theme` attribute on `<html>`. Nothing sets that attribute today. In step 24 the host's own theme arrives and does."
+      "description": "These are the semantic role tokens from `app/globals.css`, copied by hand — each neutral one wrapped in the host's matching style variable, with the house color as the fallback.\n\n**Distinction:** the app's pages and this view share a design system but not a document. The iframe inherits nothing — not Tailwind, not `globals.css`, not even the Source Sans that `next/font` loads, since an external font is another request the CSP refuses. Copying is what the sandbox costs, and the two blocks now have to be kept in step deliberately.\n\n**Show:** `var(--color-background-primary, #ffffff)`. When a host sends its style variables, `view.ts` sets them on `<html>` and the panel takes the host's palette; opened anywhere else, the fallback is the house look. Signal blue and the graphite button stay the brand's own.\n\nBelow this, dark is defined twice: once under `prefers-color-scheme`, once under a `data-theme` attribute on `<html>`, which `view.ts` sets from the host's theme so it wins over the OS in both directions."
     },
     {
       "file": "mcp-apps/todo-form/view.ts",
-      "line": 44,
-      "title": "view.ts: plain DOM, and a seam",
-      "description": "Everything in this file is DOM. Typed `getElementById` lookups, `Add` disabled while the trimmed title is empty, Enter submitting. No framework, and no MCP: `@modelcontextprotocol/ext-apps` is installed but nothing here imports it.\n\n`onSubmit` is the seam, and today it only writes a line into the status paragraph. The marked block says what step 24 puts in its place: connect the ext-apps `App`, read the initial title out of the tool input the host delivers, and call the server tool with the typed one.\n\n**Key point:** `setTitle`, `setStatus` and `renderOpenTodos` above are exported and unused. They are the surface the host will drive, and writing them now keeps step 24 about the protocol rather than about the DOM."
+      "line": 148,
+      "title": "view.ts: plain DOM, then the ext-apps App",
+      "description": "The top of the file is DOM only: typed `getElementById` lookups, `Add` disabled while the trimmed title is empty, Enter submitting, and the `setTitle`/`setTitleError`/`setStatus`/`renderOpenTodos` surface the rest of the file drives.\n\nHere the MCP half begins. `App` from `@modelcontextprotocol/ext-apps` is the view's end of the protocol, talking to the host over `postMessage`.\n\n**Key point:** both handlers are assigned *before* `connect()`. The host may send the tool input and a context change right after the handshake, and a handler assigned later simply misses them. `ontoolinput` puts the model's drafted `title` into the field; `ontoolresult` renders the open to-dos that `open_todo_form` returned; `onhostcontextchanged` applies theme, style variables and fonts, and runs again on every later change. After the handshake, the context it returned is applied once too, since that is the complete one.\n\n**Show:** `onSubmit` above. Add goes back through the host with `app.callServerTool` to `submit_todo_form`, never to `add_todo`: the model drafted the title, the user commits it. A rejected title comes back as `isError` and lands under the field; a saved one renders the refreshed open list, and `updateModelContext` tells the model what was added, so its next turn knows without calling `list_todos` again."
     },
     {
       "file": "lib/mcp-app-views.ts",
       "line": 15,
       "title": "The server's side of the same file",
-      "description": "`readView` is all the server needs in order to hand a view to a client: one `readFile` of `mcp-apps/dist/<name>.html`.\n\n**Show:** the two guards. The name is matched against `[a-z0-9-]+` before it reaches the filesystem, because it will come from code that names a view rather than from a constant. And a missing file does not surface as `ENOENT` — it names `npm run build:views`, which is the actual fix on a fresh checkout.\n\n`server-only` on the first line is the marker `lib/db.ts` and `lib/auth.ts` carry too: `node:fs` must never follow an import into the browser bundle.\n\n**Key point:** nothing calls this yet. Step 24 registers the `ui://` resource that does."
+      "description": "`readView` is all the server needs in order to hand a view to a client: one `readFile` of `mcp-apps/dist/<name>.html`.\n\n**Show:** the two guards. The name is matched against `[a-z0-9-]+` before it reaches the filesystem, because it will come from code that names a view rather than from a constant. And a missing file does not surface as `ENOENT` — it names `npm run build:views`, which is the actual fix on a fresh checkout.\n\n`server-only` on the first line is the marker `lib/db.ts` and `lib/auth.ts` carry too: `node:fs` must never follow an import into the browser bundle.\n\n**Key point:** the `ui://` resource in `lib/mcp-server.ts`, next, is the one caller — on every `resources/read`, so a rebuilt view is served without a restart."
+    },
+    {
+      "file": "lib/mcp-server.ts",
+      "line": 61,
+      "title": "The tools and the resource that serve it",
+      "description": "Two helpers from `@modelcontextprotocol/ext-apps/server` instead of the base SDK's `registerTool` and `registerResource`.\n\n`registerAppTool` registers `open_todo_form` with `_meta.ui.resourceUri` pointing at `ui://ai-tutor/todo-form.html` (and mirrors it into the legacy key older hosts read). A host that sees that link fetches the resource and renders it in an iframe beside the tool call. `registerAppResource` below serves that resource from `readView`, with the MCP App MIME type `text/html;profile=mcp-app` as the default.\n\n**Distinction:** the tool's text lives in the contract as `mcpAppTools`, *not* in `mcpTools`. `ai-tutor mcp --stdio` registers everything in `mcpTools`, and a stdio server has no view to render.\n\n`open_todo_form` returns the title — the fallback for hosts that cannot show a view, since the view reads the title from the tool *input* — and the open to-dos the form lists.\n\n**Key point:** `submit_todo_form` below carries `_meta.ui.visibility: [\"app\"]`. The host leaves it out of the model's tool list and accepts it only from this server's view, so a to-do enters the list through the form only when the user presses Add. Its input schema is the contract's `CreateTodoRequest`, so a blank title is an `isError` result before the handler runs."
     },
     {
       "file": ".gitignore",
@@ -59,7 +65,13 @@
       "file": "tests/unit/mcp-app-views.test.ts",
       "line": 26,
       "title": "Contract: what the tests pin",
-      "description": "Three tests, no Vite and no bundle in sight: a built file reads back, a missing one names the build command, and a name that is not a view folder is refused before any filesystem call.\n\n**Key point:** the second parameter of `readView` is what makes that possible. The test points it at a temp directory, so `npm test` passes on a checkout that has never run `npm run build:views` — the build itself is covered by running it, not by a test.\n\n**Transition:** everything in this tour is plain web code, and that is the whole point of it being here already. Step 24 writes only the MCP half: the tool that returns this view, the `ui://` resource that serves the built HTML, and the `App` class inside `view.ts` that connects the two ends."
+      "description": "Three tests, no Vite and no bundle in sight: a built file reads back, a missing one names the build command, and a name that is not a view folder is refused before any filesystem call.\n\n**Key point:** the second parameter of `readView` is what makes that possible. The test points it at a temp directory, so `npm test` passes on a checkout that has never run `npm run build:views` — the build itself is covered by running it, not by a test.\n\n**Transition:** everything up to here is plain web code. One test pins the MCP half."
+    },
+    {
+      "file": "tests/unit/mcp-server.test.ts",
+      "line": 57,
+      "title": "Contract: a real client sees the link, and the form saves",
+      "description": "An MCP `Client` talks to `createTodoMcpServer` over an in-memory transport pair: `tools/list` shows `_meta.ui.resourceUri` on `open_todo_form`, and `resources/read` on that URI returns the view with the MCP App MIME type.\n\nThe third parameter of `createTodoMcpServer` is passed straight to `readView`, so this test, like the previous one, reads a temp file and passes on a checkout that has never built the views.\n\nFurther down, the same client pins `submit_todo_form`: `tools/list` marks it app-only, it saves on the token's user's list and nobody else's, and it refuses an empty title without saving."
     }
   ]
 }

@@ -12,7 +12,13 @@
 
       <div class="field">
         <label for="todo-title">Title</label>
-        <input id="todo-title" type="text" autocomplete="off" />
+        <input
+          id="todo-title"
+          type="text"
+          autocomplete="off"
+          aria-describedby="todo-title-error"
+        />
+        <p id="todo-title-error" class="field-error" hidden></p>
       </div>
 
       <button id="add-todo" type="button">Add</button>
