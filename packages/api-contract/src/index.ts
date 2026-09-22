@@ -96,6 +96,58 @@ export const mcpTools = {
   },
 };
 
+export const OpenTodoFormInput = z.object({
+  title: z
+    .string()
+    .optional()
+    .describe("A drafted title to prefill; the user can still edit it."),
+});
+export type OpenTodoFormInput = z.infer<typeof OpenTodoFormInput>;
+
+/** The form lists what is still open under its field, so both App tools return it. */
+const OpenTodos = z
+  .array(Todo)
+  .describe("The user's to-dos that are not done, oldest first.");
+
+export const OpenTodoFormResponse = z.object({
+  title: z.string(),
+  openTodos: OpenTodos,
+});
+export type OpenTodoFormResponse = z.infer<typeof OpenTodoFormResponse>;
+
+export const SubmitTodoFormResponse = z.object({
+  todo: Todo,
+  openTodos: OpenTodos,
+});
+export type SubmitTodoFormResponse = z.infer<typeof SubmitTodoFormResponse>;
+
+/**
+ * Tools that render an MCP App, registered only by the app's `/api/mcp`.
+ * Kept apart from `mcpTools` on purpose: `ai-tutor mcp --stdio` registers
+ * everything in there, and a stdio server has no view to show. The UI link
+ * (`_meta.ui.resourceUri`) is added by the server that owns the resource.
+ */
+export const mcpAppTools = {
+  open_todo_form: {
+    title: "Open the to-do form",
+    description:
+      "Show the user a form for a new to-do item inside the chat. Pass `title` to prefill it with a draft. Opening the form adds nothing to the list.",
+    inputSchema: OpenTodoFormInput,
+    outputSchema: OpenTodoFormResponse,
+    annotations: { readOnlyHint: true },
+  },
+  // The form's Add button and nothing else: the server marks it app-only
+  // (`_meta.ui.visibility: ["app"]`), so the model drafts and the user commits.
+  submit_todo_form: {
+    title: "Save the to-do form",
+    description:
+      "Add the title the user confirmed in the to-do form to their list, and return the new item with the open to-dos.",
+    inputSchema: CreateTodoRequest,
+    outputSchema: SubmitTodoFormResponse,
+    annotations: { readOnlyHint: false, idempotentHint: false },
+  },
+};
+
 /** A tool result in both renderings: text for hosts that only read `content`, plus the typed value. */
 export const mcpToolResult = <T extends Record<string, unknown>>(value: T) => ({
   content: [{ type: "text" as const, text: JSON.stringify(value) }],

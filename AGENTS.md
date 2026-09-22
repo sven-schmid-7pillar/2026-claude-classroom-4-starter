@@ -23,7 +23,7 @@ app/
   api/copilotkit/[...all]/        AG-UI bridge: session → Mastra agent → CopilotKit runtime
   api/project-agent/[...all]/     the wizard agent's own runtime, for its own A2UI options
   api/todos/, api/todos/[id]/     REST API over lib/todo-tools.ts
-  api/mcp/                        MCP server over HTTP, OAuth-protected
+  api/mcp/                        MCP server over HTTP, OAuth-protected; the only one with MCP App tools
   .well-known/                    OAuth discovery documents, handed to Better Auth
 components/
   chat.tsx                        CopilotKit provider (with the A2UI catalog), CopilotChat, and the sidebar in one tree
@@ -42,10 +42,10 @@ lib/
   db.ts, schema.ts, auth-schema.ts   cached Drizzle connection; app tables; generated auth tables
   auth.ts, auth-config.ts, auth-cli.ts, auth-client.ts   server instance; shared options; auth:generate target; browser client
   api-route.ts                    bearer-only session and JSON helpers for /api/todos
-  mcp-server.ts, mcp-app-views.ts MCP server factory; reader for built MCP App views
+  mcp-server.ts, mcp-app-views.ts MCP server factory, including open_todo_form, its ui:// resource and the app-only submit_todo_form; reader for built MCP App views
   project.ts, tool-result.ts      wizard rules (plain module); AG-UI tool-result decoding
   a2ui.ts                         the catalog id the server names and the browser registers
-packages/api-contract/            zod request/response schemas and MCP tool definitions shared by app and CLI
+packages/api-contract/            zod request/response schemas and MCP tool definitions shared by app and CLI (`mcpAppTools` for /api/mcp alone)
 cli/                              `ai-tutor` CLI (commander, esbuild-bundled) including `mcp --stdio`
 mcp-apps/<name>/ → mcp-apps/dist/ MCP App views, each bundled into one HTML file by scripts/build-views.mjs
 drizzle/                          generated migrations
@@ -99,6 +99,15 @@ docs/mcp.md                       registering both MCP servers with Claude Code
 - The runtime's `a2ui` options apply to every agent it serves, so an agent that must not get `render_a2ui` needs a runtime of its own, as the wizard has in `app/api/project-agent/`.
 - `@ag-ui/mastra` puts a run's AG-UI `context` on the RequestContext under `ag-ui` and never into the prompt, so the wizard reads the card the page sends there, in its instructions as well as its tool.
 - `@ag-ui/mastra` adds its own `generate_a2ui` tool whenever the run forwards `injectA2UITool`, so switch it off on the `MastraAgent` as well (`a2ui: { injectA2UITool: false }`).
+
+### MCP App views
+
+- An MCP App tool's definition goes in the contract's `mcpAppTools`, never `mcpTools`, because `ai-tutor mcp --stdio` registers all of `mcpTools` and cannot render a view.
+- Register App tools and their `ui://` resources with `registerAppTool`/`registerAppResource` from `@modelcontextprotocol/ext-apps/server`, not the base SDK calls, so the legacy `ui/resourceUri` key and the `text/html;profile=mcp-app` MIME type come along.
+- A view's `App` handlers (`ontoolinput`, `ontoolresult`, `onhostcontextchanged`) must be assigned before `connect()`, or the notifications the host sends right after the handshake are lost.
+- A tool only the view may call, such as `submit_todo_form`, also lives in `mcpAppTools` and carries `_meta.ui.visibility: ["app"]`, which only the host enforces — any client holding the token can still call it — so it must never do more than the user's own form could.
+- The host's style variables only show where a view's CSS reads them, so `mcp-apps/*/style.css` wraps its neutral tokens in `var(--color-…, <house color>)`.
+- A view may import npm packages, which Vite inlines, but may never load anything at runtime: the host's sandbox has a default-deny CSP.
 
 ### Styling
 
