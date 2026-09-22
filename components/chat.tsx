@@ -2,6 +2,7 @@
 
 import { CopilotChat, CopilotKit } from "@copilotkit/react-core/v2";
 import "@copilotkit/react-core/v2/styles.css";
+import { tutorCatalog } from "@/components/a2ui-catalog";
 import { TodoToolCalls } from "@/components/todo-tool-calls";
 import { TodosSidebar } from "@/components/todos-sidebar";
 import type { TodoItem } from "@/lib/todo-tools";
@@ -27,7 +28,15 @@ export function Chat({
     // production one, so `enableInspector` is left unset deliberately;
     // `showDevConsole` is deprecated and no longer controls it either way.
     // app/globals.css moves its launcher off the header's sign-out button.
-    <CopilotKit runtimeUrl="/api/copilotkit" credentials="include">
+    // `a2ui` registers the catalog the progress card and the injected
+    // `render_a2ui` tool draw from. Its schema goes into the agent's context
+    // (the `includeSchema` default): that tool composes from it and reads the
+    // catalog id from it, else it falls back to the unregistered basic one.
+    <CopilotKit
+      runtimeUrl="/api/copilotkit"
+      credentials="include"
+      a2ui={{ catalog: tutorCatalog }}
+    >
       {/* Registers the transcript renderers for the tutor's tools; draws
           nothing itself, but has to be inside the provider. */}
       <TodoToolCalls />

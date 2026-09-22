@@ -17,27 +17,34 @@ app/
   layout.tsx, globals.css         root layout; design tokens and the CopilotKit theme bridge
   page.tsx                        `/`, the chat page (session-gated Server Component)
   login/, signup/                 email/password forms (client components)
-  projects/new/                   project wizard scaffold — no agent behind it yet, seam marked in onSubmit
+  projects/new/                   project wizard: an instruction box and the project card the wizard agent paints
   device/, consent/               approval pages for the CLI device flow and for MCP OAuth
   api/auth/[...all]/              Better Auth handler
   api/copilotkit/[...all]/        AG-UI bridge: session → Mastra agent → CopilotKit runtime
+  api/project-agent/[...all]/     the wizard agent's own runtime, for its own A2UI options
   api/todos/, api/todos/[id]/     REST API over lib/todo-tools.ts
   api/mcp/                        MCP server over HTTP, OAuth-protected
   .well-known/                    OAuth discovery documents, handed to Better Auth
 components/
-  chat.tsx                        CopilotKit provider, CopilotChat, and the sidebar in one tree
+  chat.tsx                        CopilotKit provider (with the A2UI catalog), CopilotChat, and the sidebar in one tree
+  a2ui-catalog.tsx                the A2UI catalog: basic components plus ProgressBar, FieldError and a house-style Card
   todos-sidebar.tsx               read-only mirror of the list; the agent is the browser's only write path
-  todo-tool-calls.tsx             useRenderTool renderers for the three agent tools
-  project-wizard.tsx, device-approval.tsx, oauth-consent.tsx, sign-out-button.tsx
+  todo-tool-calls.tsx             useRenderTool rows for listTodos, addTodo and setTodoDone; showProgress draws through A2UI
+  project-wizard.tsx              CopilotKit provider and a page-level A2UIProvider: one single-turn run per submit carrying the card's data model, no chat
+  device-approval.tsx, oauth-consent.tsx, sign-out-button.tsx
   ui/                             presentational primitives — extend one instead of repeating its class string
 lib/
-  tutor.ts                        the whole agent: instructions, model, memory, tools
-  todo-tools.ts                   every todo query; the agent tools, the REST routes and both MCP servers call it
+  tutor.ts                        the tutor (instructions, model, memory, tools) and the one Mastra instance both agents live on
+  project-agent.ts                the wizard agent: memory-less, instructions with today and the current card, and its one tool fillProjectCard
+  project-card.ts                 the project card's fixed A2UI tree, its data model both ways, and its operations (plain module)
+  openrouter.ts                   the OpenRouter model config every agent uses
+  todo-tools.ts                   every todo query; the agent tools (showProgress with its A2UI card tree), the REST routes and both MCP servers call it
   db.ts, schema.ts, auth-schema.ts   cached Drizzle connection; app tables; generated auth tables
   auth.ts, auth-config.ts, auth-cli.ts, auth-client.ts   server instance; shared options; auth:generate target; browser client
   api-route.ts                    bearer-only session and JSON helpers for /api/todos
   mcp-server.ts, mcp-app-views.ts MCP server factory; reader for built MCP App views
   project.ts, tool-result.ts      wizard rules (plain module); AG-UI tool-result decoding
+  a2ui.ts                         the catalog id the server names and the browser registers
 packages/api-contract/            zod request/response schemas and MCP tool definitions shared by app and CLI
 cli/                              `ai-tutor` CLI (commander, esbuild-bundled) including `mcp --stdio`
 mcp-apps/<name>/ → mcp-apps/dist/ MCP App views, each bundled into one HTML file by scripts/build-views.mjs
@@ -87,6 +94,11 @@ docs/mcp.md                       registering both MCP servers with Claude Code
 - `@copilotkit/react-core/v2` and `@copilotkit/runtime/v2` (`createCopilotRuntimeHandler`) are the only surfaces that work here; `@copilotkit/react-ui`, the package roots, and the Express/Hono adapters are v1.
 - CopilotKit questions go through the `copilotkit` skill, which sends you to the `copilotkit-docs` MCP server in `.mcp.json`; Mastra questions through the `mastra` skill.
 - Mastra memory is durable in SQLite, but the default `InMemoryAgentRunner` also keeps a bounded replay cache that can restore the browser transcript until eviction or restart — do not mistake either for the other when debugging.
+- `a2ui: { injectA2UITool: true }` on the runtime gives the tutor `render_a2ui`, which reads the catalog id from the schema the provider sends as context, so `includeSchema` must stay on or its surfaces name the unregistered basic catalog.
+- The chat registers only the tutor catalog, not the basic one beside it, so a `createSurface` must name `TUTOR_CATALOG_ID` or the card fails with "Catalog not found".
+- The runtime's `a2ui` options apply to every agent it serves, so an agent that must not get `render_a2ui` needs a runtime of its own, as the wizard has in `app/api/project-agent/`.
+- `@ag-ui/mastra` puts a run's AG-UI `context` on the RequestContext under `ag-ui` and never into the prompt, so the wizard reads the card the page sends there, in its instructions as well as its tool.
+- `@ag-ui/mastra` adds its own `generate_a2ui` tool whenever the run forwards `injectA2UITool`, so switch it off on the `MastraAgent` as well (`a2ui: { injectA2UITool: false }`).
 
 ### Styling
 

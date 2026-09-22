@@ -4,9 +4,11 @@ import { Mastra } from "@mastra/core/mastra";
 import { LibSQLStore } from "@mastra/libsql";
 import { Memory } from "@mastra/memory";
 import { db } from "@/lib/db";
+import { openRouterModel } from "@/lib/openrouter";
+import { createProjectAgent, PROJECT_AGENT_ID } from "@/lib/project-agent";
 import { createTodoTools } from "@/lib/todo-tools";
 
-/** Registry key of the one agent, and the CopilotKit `agentId` on the client. */
+/** Registry key of the tutor, and the CopilotKit `agentId` on the chat page. */
 export const TUTOR_AGENT_ID = "tutor";
 
 /**
@@ -41,6 +43,9 @@ ledger, and your tools are the only way to reach it:
   on the list, and after a visit resumes, rather than trusting what you recall.
 - addTodo puts one item on the list. One call per item.
 - setTodoDone completes an item, or reopens one, by the id listTodos gave you.
+- showProgress lays a card before the user showing how far along the list stands. Use it
+  when they ask how they are getting on; the card carries the figures, so do not recite
+  them afterwards, and never work them out yourself.
 
 Attend to the list without being asked twice. When the user mentions something they mean
 to do — in passing, mid-sentence, as an aside — offer in one short sentence to set it
@@ -67,7 +72,10 @@ Refusals — this matters:
 // must not survive it, or an edit to `instructions` above would never reach a
 // running dev server. So the store is cached and the Mastra instance around it
 // is rebuilt. In production the module is evaluated once and both are cached.
-type TutorMastra = Mastra<{ [TUTOR_AGENT_ID]: Agent }>;
+type TutorMastra = Mastra<{
+  [TUTOR_AGENT_ID]: Agent;
+  [PROJECT_AGENT_ID]: Agent;
+}>;
 
 const globalForTutor = globalThis as typeof globalThis & {
   tutorStorage?: LibSQLStore;
@@ -98,23 +106,15 @@ function createMastra(): TutorMastra {
         id: TUTOR_AGENT_ID,
         name: "Bartholomew",
         instructions,
-        // Mastra's model router reads OPENROUTER_API_KEY itself; no AI SDK
-        // provider package is involved.
-        model: {
-          id: "openrouter/z-ai/glm-5.3-flash",
-          // OPENROUTER_BASE_URL routes the traffic through a local proxy
-          // (mitmproxy in reverse mode, see .env.example). A custom url
-          // switches off the router's own key lookup, so hand the key over.
-          ...(process.env.OPENROUTER_BASE_URL && {
-            url: process.env.OPENROUTER_BASE_URL,
-            apiKey: process.env.OPENROUTER_API_KEY,
-          }),
-        },
+        model: openRouterModel("openrouter/z-ai/glm-5.3-flash"),
         memory: new Memory({ storage, options: { lastMessages: 40 } }),
         // The tools carry no user of their own: each reads the id off the
         // per-request RequestContext the route builds from the session.
         tools: createTodoTools(db),
       }),
+      // The project wizard (lib/project-agent.ts). It has no memory, so the
+      // storage above never sees its runs.
+      [PROJECT_AGENT_ID]: createProjectAgent(),
     },
   });
 }

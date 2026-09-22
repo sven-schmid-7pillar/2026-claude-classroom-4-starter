@@ -118,6 +118,44 @@ while the call runs — so a running call is the only blue thing in the transcri
 — then grey once it settles. Encode the state in the verb too ("Adding" →
 "Added"); the colour is a second channel, not the only one.
 
+## Progress bar
+
+A share of something done (`components/ui/progress-bar.tsx`).
+
+```
+track: h-2 w-full border border-edge bg-raised    fill: h-full bg-ink-soft
+```
+
+Graphite on the inset grey, never blue: nothing about it is clickable. The
+hairline edge keeps an empty track visible on white. It is a `progressbar` with
+its value in `aria-valuenow`, and the figure is always stated in text beside it,
+so the bar is never the only way to read the number.
+
+## A2UI surfaces in the chat
+
+Cards an agent tool draws with A2UI render from the tutor's catalog
+(`components/a2ui-catalog.tsx`), not from React components written per tool.
+The basic A2UI components are **inline-styled** — the basic `Card` is white with
+an 8px radius and a drop shadow, `Text`'s caption is a fixed `#666` — and no
+token or class reaches an inline style. So:
+
+- A basic component whose inline look breaks the system is replaced in the
+  catalog under the same name, as `Card` is: a panel, `border border-edge
+  bg-surface`, square, no shadow.
+- Leave out `Text`'s `caption` variant; its grey fails contrast on the dark
+  surface.
+- Custom entries (`ProgressBar`) wrap a primitive from `components/ui/`, so the
+  classes live in one place.
+- `FieldError` is a field's validation message: `text-sm text-danger`, inset
+  8px like the input above it, and nothing at all while the message is empty,
+  so a valid field leaves no gap.
+- The basic inputs (`TextField`, `DateTimeInput`, `ChoicePicker`) are kept, and
+  a surface that draws them sits in a `.a2ui-form` wrapper: `app/globals.css`
+  squares them, puts them on `border-edge` and `bg-surface`, gives them the
+  accent focus ring, and takes their bold labels down to 600. Their inline
+  styles only yield to `!important`, which is why these rules carry it. Leave
+  out `ChoicePicker`'s `chips` style: its selected chip is a blue pill.
+
 ## Auth card
 
 A single panel centred on the ground, `max-w-sm`, `p-8`, title at

@@ -21,6 +21,7 @@ vi.mock("@copilotkit/runtime/v2", () => ({
 }));
 
 const { GET, POST } = await import("@/app/api/copilotkit/[...all]/route");
+const { CopilotRuntime } = await import("@copilotkit/runtime/v2");
 
 const runRequest = () =>
   new Request("http://localhost/api/copilotkit/agent/tutor/run", {
@@ -88,6 +89,17 @@ describe("the CopilotKit route", () => {
 
     expect(getLocalAgent).toHaveBeenCalledWith(
       expect.objectContaining({ resourceId: "user-b" }),
+    );
+  });
+
+  test("renders A2UI from tool results and injects the UI-generating tool", async () => {
+    getSession.mockResolvedValue({ user: { id: "user-a" } });
+
+    await POST(runRequest());
+
+    // Explicit, so `render_a2ui` does not hinge on the browser sending a catalog.
+    expect(CopilotRuntime).toHaveBeenCalledWith(
+      expect.objectContaining({ a2ui: { injectA2UITool: true } }),
     );
   });
 });

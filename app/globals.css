@@ -195,6 +195,40 @@ body {
 }
 
 /*
+ * The project card (components/project-wizard.tsx) draws the basic A2UI
+ * inputs, which are inline-styled: an 8px radius, a fixed `#ccc` border, bold
+ * labels, and the browser's white field on the dark surface. No token reaches
+ * an inline style, so `!important` restyles them as the system's `Field`.
+ */
+.a2ui-form :is(input, textarea) {
+  /* biome-ignore lint/complexity/noImportantStyles: only !important beats an inline style */
+  border: 1px solid var(--edge) !important;
+  /* biome-ignore lint/complexity/noImportantStyles: only !important beats an inline style */
+  border-radius: 0 !important;
+  background: var(--surface);
+  color: var(--ink);
+  color-scheme: light dark;
+  accent-color: var(--button);
+  font: inherit;
+}
+
+.a2ui-form :is(input, textarea):focus-visible {
+  /* biome-ignore lint/complexity/noImportantStyles: only !important beats an inline style */
+  border-color: var(--signal) !important;
+  outline: 2px solid var(--signal);
+  outline-offset: 0;
+}
+
+/* A field's label, and the choice group's; the options' own labels stay 400. */
+.a2ui-form :is(label[for], strong) {
+  color: var(--ink-soft);
+  /* biome-ignore lint/complexity/noImportantStyles: only !important beats an inline style */
+  font-size: 0.875rem !important;
+  /* biome-ignore lint/complexity/noImportantStyles: only !important beats an inline style */
+  font-weight: 600 !important;
+}
+
+/*
  * The CopilotKit Inspector, development only — a production build never loads
  * it, so this element does not exist there and the rule matches nothing.
  *

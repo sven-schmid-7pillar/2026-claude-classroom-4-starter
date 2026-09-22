@@ -82,7 +82,7 @@ export const projectPatchSchema = z.object({
 
 export type ProjectPatch = z.infer<typeof projectPatchSchema>;
 
-type ProjectErrors = Partial<Record<keyof Project, string>>;
+export type ProjectErrors = Partial<Record<keyof Project, string>>;
 
 /**
  * Merges a change into the current project and checks the result. A field that

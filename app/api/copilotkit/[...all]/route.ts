@@ -28,8 +28,14 @@ async function handler(request: Request) {
     requestContext: tutorRequestContext(session.user.id),
   });
 
+  // `a2ui` applies the middleware that turns the `a2ui_operations` in a tool
+  // result (showProgress, lib/todo-tools.ts) into a surface in the chat.
+  // `injectA2UITool: true` also hands the tutor `render_a2ui`, a tool that
+  // composes a surface from the catalog schema the browser sends as context.
+  // It is explicit because the default holds only while a catalog is sent.
   const runtime = new CopilotRuntime({
     agents: { [TUTOR_AGENT_ID]: agent },
+    a2ui: { injectA2UITool: true },
   });
 
   return createCopilotRuntimeHandler({ runtime, basePath })(request);
